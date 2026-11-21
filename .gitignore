@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.ruff_cache/
+.pytest_cache/
+logs/
+
+# Everything under data/ is a build artefact, rebuilt by re-embedding or by one
+# of the fetch scripts, and none of it belongs in git. The sizes are the reason
+# this list is explicit rather than a bare `data/`: the GloVe matrix is 55 MB
+# and the three ONNX encoders come to 2.8 GB.
+data/chroma/
+data/*.npz
+data/models/
+# The translate-to-English cache. Not large, but it is the output of a model
+# call and therefore regenerable, and committing it would freeze one run of the
+# translator into the repo.
+data/translations.json

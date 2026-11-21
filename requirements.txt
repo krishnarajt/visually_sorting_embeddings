@@ -1,0 +1,41 @@
+# Core framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Settings and validation
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# The only HTTP client here, and the whole of both API integrations. OpenAI's
+# embeddings endpoint and Cohere's /v2/embed are each one POST with a list of
+# strings; two official SDKs would be a large dependency to wrap two calls the
+# rest of these repos already make with httpx.
+httpx==0.28.1
+
+# The vector store. Local persistent duckdb+parquet on disk under data/chroma,
+# one collection per embedding source — a 1536-d OpenAI vector and a 300-d
+# GloVe vector for the same word are not comparable, so they must never share
+# an index.
+chromadb==0.6.3
+
+# The projections. numpy does the cosine maths and the Procrustes alignment;
+# scikit-learn supplies PCA, t-SNE, MDS and the random projection baseline.
+numpy==2.2.1
+scikit-learn==1.6.1
+
+# The local multilingual encoders in app/services/encoders.py. All three of
+# these are already installed as chromadb dependencies, which is what makes
+# running LaBSE and two multilingual MiniLMs here cost no new download at all —
+# the alternative was torch, ~2 GB to get one forward pass. They are named
+# explicitly rather than inherited, because a direct import of a transitive
+# dependency is a dependency, and chromadb is free to drop any of them.
+onnxruntime==1.30.0
+tokenizers==0.23.2
+huggingface-hub==1.32.0
+
+# UMAP is the one method that is not in scikit-learn, and it drags in numba and
+# llvmlite to get there. Optional on purpose: app/services/projection.py
+# catches the ImportError and reports the method as unavailable rather than
+# failing the whole server, so a slim install still serves five of six methods.
+umap-learn==0.5.7

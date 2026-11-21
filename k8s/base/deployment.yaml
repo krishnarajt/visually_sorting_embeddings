@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vsembeddings
+spec:
+  # One replica, and the app is built for exactly one: the projection cache,
+  # the loaded encoders and the rate limiter are all in-process. Nothing is
+  # persisted — there is no database and no volume. The Chroma store under
+  # /app/data/chroma is a cache of embeddings that were paid for once, and
+  # losing it on a restart costs a few cents of re-embedding.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vsembeddings
+  template:
+    metadata:
+      labels:
+        app: vsembeddings
+    spec:
+      containers:
+        - name: app
+          image: vsembeddings
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+
+          # Plain settings live here; only the two API keys are secret.
+          # `env` wins over `envFrom`, so nothing in Vault can switch these.
+          env:
+            # Any origin may call the API: it has no accounts or cookies, and
+            # the UI is on Vercel and Netlify with a different preview URL per
+            # pull request. See main.py.
+            - name: CORS_ORIGINS
+              value: "*"
+            # There is no login in front of paid API keys, so this is the only
+            # thing between the internet and the OpenAI bill. See
+            # app/ratelimit.py. A person using the UI makes a handful of calls
+            # per interaction; this leaves them a lot of room.
+            - name: RATE_LIMIT_PER_MINUTE
+              value: "120"
+            - name: LOG_LEVEL
+              value: INFO
+
+          # OPENAI_KEY and COHERE_KEY, both optional: a source whose key is
+          # missing reports itself unavailable and the UI greys it out, so the
+          # pod must start without them. `optional` is what lets it.
+          envFrom:
+            - secretRef:
+                name: vsembeddings-env
+                optional: true
+
+          # /health answers as soon as uvicorn is up; the UMAP warm-up and the
+          # GloVe load run on background threads after that.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+          # Measured, not guessed: 490 MB idle (GloVe, the UMAP/numba runtime,
+          # Chroma), then each encoder adds its weights the first time anyone
+          # uses it and keeps them — e5 +0.8 GB, MiniLM +0.7, LaBSE +1.9,
+          # bge-m3 +1.4, so 5.3 GB once all four have been touched. The limit
+          # is that plus working room; the request is what idle needs, because
+          # only requests are reserved on the node. If the node cannot spare
+          # the limit, lower it and accept an OOM-restart for a visitor who
+          # tries every model — or drop the big encoders from the Dockerfile.
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "100m"
+            limits:
+              memory: "7Gi"
+              cpu: "1000m"

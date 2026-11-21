@@ -1,0 +1,24 @@
+# Applied once by hand, not by Argo itself:
+#   kubectl apply -f k8s/base/argocd-app.yaml
+# After that Argo tracks k8s/overlays/gitea and the CI workflow only ever
+# changes the image tag in it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vsembeddings
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.krishnarajthadesar.in/krishnaraj/visually_sorting_embeddings
+    targetRevision: main
+    path: k8s/overlays/gitea
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vsembeddings
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

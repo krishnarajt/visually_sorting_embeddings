@@ -1,0 +1,23 @@
+# .env holds the real API keys and settings.py would load it, so it must never
+# be copied into an image. The cluster supplies them as environment variables.
+.env
+.env.*
+!.env.example
+
+# data/ is 5 GB of GloVe, weights and a local Chroma store. The Dockerfile
+# fetches what it needs itself; sending this as build context would be slow
+# and would put the local store into the image.
+data
+
+.git
+.gitea
+.github
+.venv
+__pycache__
+*.pyc
+.ruff_cache
+.pytest_cache
+logs
+k8s
+tests
+*.md

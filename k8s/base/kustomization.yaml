@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+# Paid provider keys are optional. Leave the ExternalSecret out while its Vault
+# entry is absent; the Deployment already makes envFrom optional, so the app
+# starts cleanly and Argo stays Healthy. Add externalsecret.yaml here when the
+# Vault entry is created.
